@@ -1,0 +1,26 @@
+site_name: tkmsgcat
+repo_url: https://github.com/demberto/tkinter-msgcat
+site_url: https://demberto.github.io/tkinter-msgcat
+nav:
+  - Getting Started: index.md
+  - API: api.md
+  - Changelog: changelog.md
+theme:
+  name: readthedocs
+plugins:
+  - include-markdown
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          selection:
+            filters:
+              - "!^_"  # exlude all members starting with _
+              - "^__init__$"  # but always include __init__ modules and methods
+          rendering:
+            show_signature_annotations: true
+      watch:
+        - tkmsgcat
+        - README.md
+markdown_extensions:
+  - admonition
