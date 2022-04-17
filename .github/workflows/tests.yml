@@ -21,11 +21,13 @@ jobs:
           python -m pip install tox tox-gh-actions
       - name: Test with tox
         run: tox
+      - name: List local files
+        run: ls -al
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v3
         with:
           name: coverage-data
-          path: ./.coverage.*
+          path: .coverage.*
           if-no-files-found: error
   coverage:
     name: Check and upload coverage
