@@ -5,6 +5,7 @@ nav:
   - Getting Started: index.md
   - API: api.md
   - Changelog: changelog.md
+  - Contributor's Guide: contributing.md
 theme:
   name: readthedocs
 plugins:
