@@ -20,8 +20,14 @@ from __future__ import annotations
 import contextlib
 import logging
 import pathlib
+import sys
 import tkinter as tk
-from typing import Callable, Iterable, Optional, Union, overload
+from typing import Tuple, cast, no_type_check, overload
+
+if sys.version_info >= (3, 9):
+    from collections.abc import Callable, Iterator
+else:
+    from typing import Callable, Iterator
 
 __all__ = [
     "MessageCatalog",
@@ -46,16 +52,38 @@ __all__ = [
 log = logging.getLogger("tkmsgcat")
 
 
+# Python <= 3.7 doesn't have this method.
+@no_type_check
+def _get_default_root(what: str = None) -> tk.Tk:
+    # pylint: disable=protected-access
+    if not tk._support_default_root:
+        raise RuntimeError(
+            "No master specified and tkinter is "
+            "configured to not support default root"
+        )
+    if tk._default_root is None:
+        if what:
+            raise RuntimeError(f"Too early to {what}: no default root window")
+        root = tk.Tk()
+        if tk._default_root is not root:
+            raise RuntimeError("Couldn't initialise a default root")
+    return tk._default_root
+
+
 class _PackageOption:
     def __init__(self, cmd: str) -> None:
         self.__cmd = cmd
         self.__handler = ""
 
-    def __set__(self, instance: MessageCatalog, value: Callable) -> None:
+    def __set__(
+        self,
+        instance: MessageCatalog,
+        value: Callable,  # type: ignore
+    ) -> None:
         self.__handler = instance.root.register(value)
         instance.eval_(f"::msgcat::mcpackageconfig set {self.__cmd} {self.__handler}")
 
-    def __get__(self, instance: MessageCatalog, _=None) -> str:
+    def __get__(self, instance: MessageCatalog, _=None) -> str:  # type: ignore
         try:
             return instance.eval_(f"::msgcat::mcpackageconfig get {self.__cmd}")
         except tk.TclError as exc:
@@ -82,18 +110,18 @@ class MessageCatalog:
 
     @property
     def root(self) -> tk.Tk:
-        # pylint: disable=protected-access
-        return tk._get_default_root(what="use msgcat")  # type: ignore
+        return cast(tk.Tk, _get_default_root(what="use msgcat"))
 
     def eval_(self, cmd: str) -> str:
         log.debug("Evaluating %s", cmd)
         return self.root.eval(cmd)
 
     def _splitlist(self, __s: str) -> tuple[str]:
-        return self.root.splitlist(__s)
+        # pylint: disable=deprecated-typing-alias
+        return cast(Tuple[str], self.root.splitlist(__s))
 
     @staticmethod
-    def _joinlist(__l: Iterable[str]) -> str:
+    def _join(*__l: str) -> str:
         new_l = []
         for i in __l:
             stripped = i.strip('"')
@@ -113,7 +141,7 @@ class MessageCatalog:
         return " ".join(lst)
 
     @contextlib.contextmanager
-    def _locale_ctx(self, newlocale: str):
+    def _locale_ctx(self, newlocale: str) -> Iterator[None]:
         oldlc = self.locale
         self.locale = newlocale
         try:
@@ -123,11 +151,11 @@ class MessageCatalog:
 
     def is_init(self) -> bool:
         tkbool = self.eval_("::msgcat::mcpackageconfig isset mcfolder")
-        return self.root.getboolean(tkbool)
+        return cast(bool, self.root.getboolean(tkbool))
 
-    def is_loaded(self, __locale: str) -> bool:
+    def is_loaded(self, locale_: str) -> bool:
         tklist = self.eval_("::msgcat::mcloadedlocales loaded")
-        return __locale in self._splitlist(tklist)
+        return locale_ in self._splitlist(tklist)
 
     @overload
     def load(self, dir_: str) -> None:
@@ -137,13 +165,11 @@ class MessageCatalog:
     def load(self, dir_: pathlib.Path) -> None:
         ...  # pragma: no cover
 
-    def load(self, dir_) -> None:
-        if isinstance(dir_, pathlib.Path):
-            msgspath = dir_.resolve()
-        else:
-            msgspath = pathlib.Path(dir_).resolve()
+    def load(self, dir_: str | pathlib.Path) -> None:
+        _path = dir_ if isinstance(dir_, pathlib.Path) else pathlib.Path(dir_)
+        _resolvedpath = _path.resolve()
         # ! Tk bug: All backslashes need to be replaced by formward slashes
-        msgsdir = str(msgspath).replace("\\", "/")
+        msgsdir = str(_resolvedpath).replace("\\", "/")
         log.debug("Loading translations from %s", msgsdir)
         self.eval_(
             f'::msgcat::mcload [file join [file dirname [info script]] "{msgsdir}"]'
@@ -154,7 +180,7 @@ class MessageCatalog:
         return self.eval_("::msgcat::mclocale")
 
     @locale.setter
-    def locale(self, newlocale: str):
+    def locale(self, newlocale: str) -> None:
         self.eval_(f"::msgcat::mclocale {newlocale}")
 
     @property
@@ -164,11 +190,11 @@ class MessageCatalog:
 
     loaded_from = _PackageOption("mcfolder")
 
-    def longest(self, strings: Iterable[str]) -> int:
-        return int(self.eval_(f"::msgcat::mcmax {self._joinlist(strings)}"))
+    def longest(self, strings: tuple[str]) -> int:
+        return int(self.eval_(f"::msgcat::mcmax {self._join(*strings)}"))
 
-    def longest_in(self, __locale: str, strings: Iterable[str]) -> int:
-        with self._locale_ctx(__locale):
+    def longest_in(self, locale_: str, strings: tuple[str]) -> int:
+        with self._locale_ctx(locale_):
             return self.longest(strings)
 
     @property
@@ -181,34 +207,31 @@ class MessageCatalog:
         if not search_all:
             command += " -exactlocale"
         command += f" {what}"
-        return self.root.getboolean(self.eval_(command))
+        return cast(bool, self.root.getboolean(self.eval_(command)))
 
-    def add(self, __what: str, __translation: str) -> None:
-        self.eval_(f'::msgcat::mcset {self.locale} "{__what}" "{__translation}"')
+    def add(self, what: str, translation: str) -> None:
+        self.eval_(f'::msgcat::mcset {self.locale} "{what}" "{translation}"')
 
-    def add_to(self, __locale: str, __what: str, __translation: str) -> None:
-        self.eval_(f'::msgcat::mcset {__locale} "{__what}" "{__translation}"')
+    def add_to(self, locale_: str, what: str, translation: str) -> None:
+        self.eval_(f'::msgcat::mcset {locale_} "{what}" "{translation}"')
 
     def update(self, translations: dict[str, str]) -> None:
         self.eval_(
             f"::msgcat::mcmset {self.locale} {{{self._dict2str(translations)}}}",
         )
 
-    def update_to(self, __locale: str, translations: dict[str, str]) -> None:
-        self.eval_(f"::msgcat::mcmset {__locale} {{{self._dict2str(translations)}}}")
+    def update_to(self, locale_: str, translations: dict[str, str]) -> None:
+        self.eval_(f"::msgcat::mcmset {locale_} {{{self._dict2str(translations)}}}")
 
-    def get(self, what: str, *fmtargs) -> str:
+    def get(self, what: str, *fmtargs: str) -> str:
         command = f'::msgcat::mc "{what}"'
         if fmtargs:
-            command = command + " " + self._joinlist(fmtargs)
+            command = command + " " + self._join(*fmtargs)
         return self.eval_(command)
 
-    def get_from(self, __locale: str, what: str, *fmtargs) -> str:
-        old_locale = self.locale
-        self.locale = __locale
-        translation = self.get(what, *fmtargs)
-        self.locale = old_locale
-        return translation
+    def get_from(self, locale_: str, what: str, *fmtargs: str) -> str:
+        with self._locale_ctx(locale_):
+            return self.get(what, *fmtargs)
 
     # TODO Doesn't work
     # locale_handler = _Handler("changecmd")
@@ -230,20 +253,20 @@ def is_init() -> bool:
     return _default_msgcat.is_init()
 
 
-def is_loaded(__locale: str) -> bool:
+def is_loaded(locale_: str) -> bool:
     """Whether a translation file for a particular locale is loaded.
 
     Args:
-        __locale (str): The locale to be checked if it is loaded.
+        locale_ (str): The locale to be checked if it is loaded.
     """
-    return _default_msgcat.is_loaded(__locale)
+    return _default_msgcat.is_loaded(locale_)
 
 
-def load(dir_: Union[str, pathlib.Path]) -> None:
+def load(dir_: str | pathlib.Path) -> None:
     """Loads all translation files from the specified directory.
 
     Args:
-        dir_ (Union[str, pathlib.Path]): The path/name of the directory where
+        dir_ (str | pathlib.Path): The path/name of the directory where
             all the translation files (.msg extension) are stored. Tk
             recommends you to store them all in a separate `msgs` directory at
             the package level and name them according to their locale.
@@ -286,7 +309,7 @@ def loaded_locales() -> tuple[str]:
     return _default_msgcat.loaded_locales
 
 
-def longest(what: Iterable[str]) -> int:
+def longest(what: tuple[str]) -> int:
     """Find the length of the longest translated string in the current locale.
 
     This is useful in deciding the maximum size of a label or a button when
@@ -302,21 +325,21 @@ def longest(what: Iterable[str]) -> int:
     return _default_msgcat.longest(what)
 
 
-def longest_in(__locale: str, what: Iterable[str]) -> int:
+def longest_in(locale_: str, what: tuple[str]) -> int:
     """Find the length of the longest translated string in a specific locale.
 
     This is useful in deciding the maximum size of a label or a button when
     using the `place` geometry manager, for exmaple.
 
     Args:
-        __locale (str): The locale to use for finding the length.
+        locale_ (str): The locale to use for finding the length.
         what (str): The strings whose translations are to be compared.
 
     Returns:
         int: Length of the longest translated string with respect to all the
             strings passed .
     """
-    return _default_msgcat.longest_in(__locale, what)
+    return _default_msgcat.longest_in(locale_, what)
 
 
 def preferences() -> tuple[str]:
@@ -349,15 +372,15 @@ def add(what: str, translation: str) -> None:
     _default_msgcat.add(what, translation)
 
 
-def add_to(__locale: str, what: str, translation: str) -> None:
+def add_to(locale_: str, what: str, translation: str) -> None:
     """Set/update a translation in a specific locale.
 
     Args:
-        __locale (str): The locale in which this operation will take place.
+        locale_ (str): The locale in which this operation will take place.
         what (str): The string to be translated.
         translation (str): The translated string.
     """
-    _default_msgcat.add_to(__locale, what, translation)
+    _default_msgcat.add_to(locale_, what, translation)
 
 
 def update(translations: dict[str, str]) -> None:
@@ -370,24 +393,24 @@ def update(translations: dict[str, str]) -> None:
     _default_msgcat.update(translations)
 
 
-def update_to(__locale: str, translations: dict[str, str]) -> None:
+def update_to(locale_: str, translations: dict[str, str]) -> None:
     """Set/update translations in a specific locale.
 
     Args:
-        __locale (str): The locale in which this operation will take place.
+        locale_ (str): The locale in which this operation will take place.
         translations (dict[str, str]): A mapping of source strings to
             translated strings.
     """
-    _default_msgcat.update_to(__locale, translations)
+    _default_msgcat.update_to(locale_, translations)
 
 
-def get(what: str, *fmtargs) -> str:
+def get(what: str, *fmtargs: str) -> str:
     """Translate a string according to a user's current locale.
 
     Args:
         what (str): The string to be translated. It should generally be in
             English as that is the language used by code itself.
-        fmatargs (list, optional): Additional arguments passed over internally
+        *fmtargs (tuple[str], optional): Extra arguments passed internally
             to the [format](https://www.tcl.tk/man/tcl8.6/TclCmd/format.html)
             package.
 
@@ -397,21 +420,21 @@ def get(what: str, *fmtargs) -> str:
     return _default_msgcat.get(what, *fmtargs)
 
 
-def get_from(__locale: str, what: str, *fmtargs) -> str:
+def get_from(locale_: str, what: str, *fmtargs: str) -> str:
     """Get the translation of a string from a specific locale.
 
     Args:
-        __locale (str): The locale to be used for looking up `__what`.
+        locale_ (str): The locale to be used for looking up `__what`.
         what (str): The string to be translated. It should generally be in
             English as that is the language used by code itself.
-        fmatargs (list, optional): Additional arguments passed over internally
+        *fmtargs (tuple[str], optional): Extra arguments passed internally
             to the [format](https://www.tcl.tk/man/tcl8.6/TclCmd/format.html)
             package.
 
     Returns:
         str: The translated string.
     """
-    return _default_msgcat.get_from(__locale, what, *fmtargs)
+    return _default_msgcat.get_from(locale_, what, *fmtargs)
 
 
 # def locale_handler(func: Optional[Callable] = None) -> None:
@@ -431,7 +454,7 @@ def get_from(__locale: str, what: str, *fmtargs) -> str:
 #         del _default_msgcat.locale_handler
 
 
-def missing_handler(func: Optional[Callable] = None) -> None:
+def missing_handler(func: Callable[..., str] | None = None) -> None:
     """Register the callback invoked when a translation is not found.
 
     It is invoked with the same arguments passed to `translate`. It must
