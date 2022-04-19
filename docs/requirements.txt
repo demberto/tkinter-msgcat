@@ -1,4 +1,3 @@
 mkdocs
 mkdocstrings-python-legacy
 mkdocs-include-markdown-plugin
-mkdocs-material

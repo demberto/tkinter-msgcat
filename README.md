@@ -4,13 +4,16 @@
     <th>ci</th>
     <td>
       <a>
-        <img alt="Tests" src="https://img.shields.io/github/workflow/status/demberto/tkinter-msgcat/tests?label=tests">
+        <img alt="Tests" src="https://img.shields.io/github/workflow/status/demberto/tkinter-msgcat/tests?label=tests"/>
       </a>
       <a>
-        <img alt="Build" src="https://img.shields.io/github/workflow/status/demberto/tkinter-msgcat/publish">
+        <img alt="Build" src="https://img.shields.io/github/workflow/status/demberto/tkinter-msgcat/publish"/>
       </a>
       <a href="https://tkmsgcat.readthedocs.io/en/latest/?badge=latest">
-        <img alt="Docs" src="https://readthedocs.org/projects/tkmsgcat/badge/?version=latest">
+        <img alt="Docs" src="https://readthedocs.org/projects/tkmsgcat/badge/?version=latest"/>
+      </a>
+      <a href="https://coveralls.io/github/demberto/tkinter-msgcat?branch=main">
+        <img alt="Coverage Status" src="https://coveralls.io/repos/github/demberto/tkinter-msgcat/badge.svg?branch=main"/>
       </a>
     </td>
   </tr>
@@ -18,13 +21,13 @@
     <th>pypi</th>
     <td>
       <a href="https://github.com/demberto/tkinter-msgcat/releases">
-        <img alt="Version" src="https://img.shields.io/pypi/v/tkinter-msgcat">
+        <img alt="Version" src="https://img.shields.io/pypi/v/tkinter-msgcat"/>
       </a>
       <a href="https://github.com/demberto/tkinter-msgcat/blob/master/LICENSE">
-        <img alt="License" src="https://img.shields.io/pypi/l/tkinter-msgcat">
+        <img alt="License" src="https://img.shields.io/pypi/l/tkinter-msgcat"/>
       </a>
       <a>
-        <img alt="Python Versions" src="https://img.shields.io/pypi/pyversions/tkinter-msgcat">
+        <img alt="Python Versions" src="https://img.shields.io/pypi/pyversions/tkinter-msgcat"/>
       </a>
     </td>
   </tr>
@@ -32,13 +35,13 @@
     <th>qa</th>
     <td>
       <a href="https://github.com/PyCQA/bandit">
-        <img alt="security: bandit" src="https://img.shields.io/badge/security-bandit-yellow.svg">
+        <img alt="security: bandit" src="https://img.shields.io/badge/security-bandit-yellow.svg"/>
       </a>
       <a href="https://github.com/python/mypy">
-        <img alt="mypy: checked" src="https://img.shields.io/badge/mypy-checked-blue.svg">
+        <img alt="mypy: checked" src="https://img.shields.io/badge/mypy-checked-blue.svg"/>
       </a>
       <a href="https://github.com/psf/black">
-        <img alt="code style: black" src="https://img.shields.io/badge/code%20style-black-black.svg">
+        <img alt="code style: black" src="https://img.shields.io/badge/code%20style-black-black.svg"/>
       </a>
     </td>
   </tr>
