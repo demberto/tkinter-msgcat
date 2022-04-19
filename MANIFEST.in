@@ -1,9 +1,10 @@
 include .editorconfig
+include *.md
 include *.yaml
 include *.yml
 include tox.ini
 include VERSION
 recursive-include tests/msgs *.msg
 recursive-include tests *.py
-recursive-include *.md
-recursive-include *.txt
+recursive-include docs *.md
+recursive-include docs *.txt
