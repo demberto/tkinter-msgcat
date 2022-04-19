@@ -20,9 +20,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install tox tox-gh-actions
       - name: Test with tox
-        run: tox
-      - name: List local files
-        run: ls -al
+        run: tox -rvv
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v3
         with:
